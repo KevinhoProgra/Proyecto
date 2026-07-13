@@ -1,0 +1,34 @@
+import Navbar from '../Components/Navbar';
+import Sidebar from '../Components/Sidebar';
+
+function Layout({ children }) {
+    return (
+       
+        <div className="flex flex-col min-h-screen bg-gray-100 text-gray-800">
+            
+           
+            <Navbar />
+
+            
+            <div className="flex flex-1">
+                
+                
+                <Sidebar />
+                
+                
+                <main className="flex-1 p-6">
+                    {children}
+                </main>
+                
+            </div>
+
+            {/* Footer abajo del todo */}
+            <footer className="bg-white text-center py-3 border-t border-gray-200 text-sm text-gray-500">
+                <p>Copyright 2026 Automotive Inventory</p>
+            </footer>
+
+        </div>
+    );
+}
+
+export default Layout;

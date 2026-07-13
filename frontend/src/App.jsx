@@ -1,9 +1,12 @@
+import Layout from './layout/Layout';
+import Dashboard from './pages/Dashboard';
+
 function App() {
   return (
-    <div>
-      <h1>Automotive Inventory</h1>
-      <p>Proyecto desarrollado con React y Node.js</p>
-    </div>
+    
+    <Layout>
+      <Dashboard />
+    </Layout>
   );
 }
 
