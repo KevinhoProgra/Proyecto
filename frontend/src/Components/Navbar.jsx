@@ -8,6 +8,8 @@ function Navbar() {
   
         <div className="flex items-center gap-2 font-medium text-gray-700">
           <span>Kevin Lizano Vargas</span>
+          <span>Kevin Jesús Quirós Hidalgo</span>
+          <span>Emily Monique Thoms Amador</span>
         </div>
       </nav>
     );
