@@ -2,7 +2,7 @@ function Dashboard() {
     return (
         <div className="space-y-4">
             <h1 className="text-2xl font-bold text-gray-900" >
-                Dashboard
+                Panel principal
             </h1>
             <p className="text-gray-600">Bienvenido al sistema. Aquí conectarás la información de la base de datos más adelante.</p>
       

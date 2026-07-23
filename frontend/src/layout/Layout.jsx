@@ -16,7 +16,7 @@ function Layout() {
       </div>
 
       <footer className="bg-white text-center py-3 border-t border-gray-200 text-sm text-gray-500">
-        <p>Copyright 2026 Automotive Inventory</p>
+        <p>AutoInventory 2026</p>
       </footer>
     </div>
   );
