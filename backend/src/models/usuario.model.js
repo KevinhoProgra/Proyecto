@@ -48,7 +48,7 @@ export const usuarioModel = {
 
   async crear({ password, ...datos }) {
     if (!password || password.length < 8) {
-      throw new ErrorApi(400, 'La contrasena es obligatoria y debe tener al menos 8 caracteres');
+      throw new ErrorApi(400, 'La contraseña es obligatoria y debe tener al menos 8 caracteres');
     }
     const limpio = filtrar(datos);
     limpio.password_hash = await bcrypt.hash(password, RONDAS_BCRYPT);
@@ -60,10 +60,10 @@ export const usuarioModel = {
   async actualizar(id, { password, ...datos }) {
     const limpio = filtrar(datos);
     if (password) {
-      if (password.length < 8) throw new ErrorApi(400, 'La contrasena debe tener al menos 8 caracteres');
+      if (password.length < 8) throw new ErrorApi(400, 'La contraseña debe tener al menos 8 caracteres');
       limpio.password_hash = await bcrypt.hash(password, RONDAS_BCRYPT);
     }
-    if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envio ningun campo valido');
+    if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envió ningún campo válido');
 
     const [resultado] = await pool.query('UPDATE usuarios SET ? WHERE id = ?', [limpio, id]);
     return resultado.affectedRows ? this.obtener(id) : null;

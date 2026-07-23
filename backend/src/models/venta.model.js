@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { ErrorApi } from '../utils/ErrorApi.js';
+import { idEstadoVehiculo } from './catalogo.model.js';
 
 const redondear = (numero) => Math.round(numero * 100) / 100;
 
@@ -62,12 +63,15 @@ export const ventaModel = {
    */
   async crear({ cliente_id, usuario_id, metodo_pago, observaciones, detalle }) {
     if (!Array.isArray(detalle) || !detalle.length) {
-      throw new ErrorApi(400, 'La venta debe incluir al menos un vehiculo');
+      throw new ErrorApi(400, 'La venta debe incluir al menos un vehículo');
     }
 
     const conexion = await pool.getConnection();
     try {
       await conexion.beginTransaction();
+
+      // Se resuelve primero: si el catalogo no lo tiene, falla antes de facturar.
+      const estadoVendido = await idEstadoVehiculo('Vendido', conexion);
 
       const ids = detalle.map((linea) => linea.vehiculo_id);
       const [vehiculos] = await conexion.query(
@@ -78,9 +82,9 @@ export const ventaModel = {
         [ids],
       );
 
-      if (vehiculos.length !== ids.length) throw new ErrorApi(400, 'Alguno de los vehiculos no existe');
+      if (vehiculos.length !== ids.length) throw new ErrorApi(400, 'Alguno de los vehículos no existe');
       const vendido = vehiculos.find((vehiculo) => vehiculo.estado === 'Vendido');
-      if (vendido) throw new ErrorApi(409, `El vehiculo ${vendido.id} ya fue vendido`);
+      if (vendido) throw new ErrorApi(409, `El vehículo ${vendido.id} ya fue vendido`);
 
       const numero_factura = await siguienteFactura(conexion);
       const [cabecera] = await conexion.query(
@@ -107,12 +111,7 @@ export const ventaModel = {
         subtotal, descuento, impuesto, total, ventaId,
       ]);
 
-      await conexion.query(
-        `UPDATE vehiculos
-         SET estado_id = (SELECT id FROM estados_vehiculo WHERE nombre = 'Vendido')
-         WHERE id IN (?)`,
-        [ids],
-      );
+      await conexion.query('UPDATE vehiculos SET estado_id = ? WHERE id IN (?)', [estadoVendido, ids]);
 
       await conexion.commit();
       return this.obtener(ventaId);
@@ -144,11 +143,11 @@ export const ventaModel = {
       await conexion.beginTransaction();
       const [resultado] = await conexion.query("UPDATE ventas SET estado = 'anulada' WHERE id = ?", [id]);
       if (resultado.affectedRows) {
+        const estadoDisponible = await idEstadoVehiculo('Disponible', conexion);
         await conexion.query(
-          `UPDATE vehiculos
-           SET estado_id = (SELECT id FROM estados_vehiculo WHERE nombre = 'Disponible')
+          `UPDATE vehiculos SET estado_id = ?
            WHERE id IN (SELECT vehiculo_id FROM venta_detalle WHERE venta_id = ?)`,
-          [id],
+          [estadoDisponible, id],
         );
       }
       await conexion.commit();

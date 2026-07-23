@@ -4,10 +4,20 @@ import { usuarioModel } from '../models/usuario.model.js';
 import { registrar } from '../middlewares/bitacora.js';
 import { ErrorApi } from '../utils/ErrorApi.js';
 
+// Login y perfil devuelven exactamente la misma forma, para que el frontend
+// pueda restaurar la sesion al recargar sin tener que normalizar nada.
+const datosSesion = (usuario, permisos) => ({
+  id: usuario.id,
+  usuario: usuario.usuario,
+  nombre: `${usuario.nombre} ${usuario.apellidos}`,
+  rol: usuario.rol,
+  permisos,
+});
+
 export const authController = {
   async login(req, res) {
     const { usuario, password } = req.body;
-    if (!usuario || !password) throw new ErrorApi(400, 'Usuario y contrasena son obligatorios');
+    if (!usuario || !password) throw new ErrorApi(400, 'Usuario y contraseña son obligatorios');
 
     const encontrado = await usuarioModel.buscarPorUsuario(usuario);
 
@@ -16,7 +26,7 @@ export const authController = {
     const valido = encontrado && (await bcrypt.compare(password, encontrado.password_hash));
     if (!valido || !encontrado.activo) {
       await registrar({ accion: 'login_fallido', detalle: `Intento con usuario: ${usuario}`, ip: req.ip });
-      throw new ErrorApi(401, 'Usuario o contrasena incorrectos');
+      throw new ErrorApi(401, 'Usuario o contraseña incorrectos');
     }
 
     const permisos = await usuarioModel.permisosDe(encontrado.id);
@@ -29,22 +39,13 @@ export const authController = {
     await usuarioModel.registrarAcceso(encontrado.id);
     await registrar({ usuario_id: encontrado.id, accion: 'login_ok', ip: req.ip });
 
-    res.json({
-      token,
-      usuario: {
-        id: encontrado.id,
-        usuario: encontrado.usuario,
-        nombre: `${encontrado.nombre} ${encontrado.apellidos}`,
-        rol: encontrado.rol,
-        permisos,
-      },
-    });
+    res.json({ token, usuario: datosSesion(encontrado, permisos) });
   },
 
   // Sirve para que el frontend valide al recargar la pagina si el token sigue vivo.
   async perfil(req, res) {
     const usuario = await usuarioModel.obtener(req.usuario.id);
     if (!usuario) throw new ErrorApi(404, 'Usuario no encontrado');
-    res.json({ ...usuario, permisos: req.usuario.permisos });
+    res.json(datosSesion(usuario, req.usuario.permisos));
   },
 };

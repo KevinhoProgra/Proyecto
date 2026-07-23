@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { ErrorApi } from '../utils/ErrorApi.js';
+import { idEstadoVehiculo } from './catalogo.model.js';
 
 async function siguienteCodigo(conexion) {
   const [[fila]] = await conexion.query('SELECT IFNULL(MAX(id), 0) + 1 AS siguiente FROM mantenimientos');
@@ -47,6 +48,7 @@ export const mantenimientoModel = {
     try {
       await conexion.beginTransaction();
 
+      const estadoEnMantenimiento = await idEstadoVehiculo('En mantenimiento', conexion);
       const codigo = await siguienteCodigo(conexion);
       const [resultado] = await conexion.query(
         `INSERT INTO mantenimientos
@@ -77,12 +79,7 @@ export const mantenimientoModel = {
         );
       }
 
-      await conexion.query(
-        `UPDATE vehiculos
-         SET estado_id = (SELECT id FROM estados_vehiculo WHERE nombre = 'En mantenimiento')
-         WHERE id = ?`,
-        [vehiculo_id],
-      );
+      await conexion.query('UPDATE vehiculos SET estado_id = ? WHERE id = ?', [estadoEnMantenimiento, vehiculo_id]);
 
       await conexion.commit();
       return this.obtener(mantenimientoId);
@@ -109,10 +106,9 @@ export const mantenimientoModel = {
     // Al entregar el vehiculo vuelve a estar disponible.
     if (estado === 'entregado') {
       await pool.query(
-        `UPDATE vehiculos
-         SET estado_id = (SELECT id FROM estados_vehiculo WHERE nombre = 'Disponible')
+        `UPDATE vehiculos SET estado_id = ?
          WHERE id = (SELECT vehiculo_id FROM mantenimientos WHERE id = ?)`,
-        [id],
+        [await idEstadoVehiculo('Disponible'), id],
       );
     }
     return this.obtener(id);

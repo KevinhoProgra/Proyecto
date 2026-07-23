@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { crearModeloCrud } from './crud.model.js';
+import { ErrorApi } from '../utils/ErrorApi.js';
 
 export const marcaModel = crearModeloCrud({
   tabla: 'marcas',
@@ -18,6 +19,19 @@ export const estadoVehiculoModel = crearModeloCrud({
   campos: ['nombre'],
   orden: 'id',
 });
+
+/**
+ * Los estados de vehiculo no vienen precargados: se registran desde el sistema.
+ * Vender o recibir un vehiculo necesita algunos con nombre exacto, asi que si
+ * falta alguno se avisa con claridad en vez de fallar con un error de SQL.
+ */
+export async function idEstadoVehiculo(nombre, conexion = pool) {
+  const [[fila]] = await conexion.query('SELECT id FROM estados_vehiculo WHERE nombre = ?', [nombre]);
+  if (!fila) {
+    throw new ErrorApi(409, `Falta el estado "${nombre}" en el catálogo de estados de vehículo. Regístralo antes de continuar.`);
+  }
+  return fila.id;
+}
 
 // Todos los catalogos en una sola peticion, para llenar los <select> del frontend.
 export async function catalogosCompletos() {

@@ -30,7 +30,7 @@ export function crearModeloCrud({ tabla, campos, sqlListar, orden = 'id' }) {
 
     async crear(datos) {
       const limpio = filtrar(datos, campos);
-      if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envio ningun campo valido');
+      if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envió ningún campo válido');
 
       const [resultado] = await pool.query(`INSERT INTO ${tabla} SET ?`, [limpio]);
       return this.obtener(resultado.insertId);
@@ -38,7 +38,7 @@ export function crearModeloCrud({ tabla, campos, sqlListar, orden = 'id' }) {
 
     async actualizar(id, datos) {
       const limpio = filtrar(datos, campos);
-      if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envio ningun campo valido');
+      if (!Object.keys(limpio).length) throw new ErrorApi(400, 'No se envió ningún campo válido');
 
       const [resultado] = await pool.query(`UPDATE ${tabla} SET ? WHERE id = ?`, [limpio, id]);
       return resultado.affectedRows ? this.obtener(id) : null;

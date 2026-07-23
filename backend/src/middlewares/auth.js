@@ -5,12 +5,12 @@ import { ErrorApi } from '../utils/ErrorApi.js';
 export function verificarToken(req, res, next) {
   const header = req.headers.authorization ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-  if (!token) throw new ErrorApi(401, 'No se envio el token de autenticacion');
+  if (!token) throw new ErrorApi(401, 'No se envió el token de autenticación');
 
   try {
     req.usuario = jwt.verify(token, process.env.JWT_SECRET);
   } catch {
-    throw new ErrorApi(401, 'Token invalido o expirado');
+    throw new ErrorApi(401, 'Token inválido o expirado');
   }
   next();
 }

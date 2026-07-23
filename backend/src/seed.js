@@ -1,6 +1,15 @@
 /**
- * Carga los datos MINIMOS para que el sistema arranque: roles, permisos,
- * catalogos y un usuario administrador. No inserta clientes, vehiculos ni ventas.
+ * Inicializa el sistema con lo MINIMO indispensable para poder entrar:
+ *   - el catalogo de permisos
+ *   - el rol Administrador con todos los permisos
+ *   - el usuario admin
+ *
+ * NO carga marcas, tipos, estados, clientes, vehiculos ni usuarios adicionales:
+ * todo eso se registra desde el sistema.
+ *
+ * Los permisos son la unica excepcion porque son contrato del codigo
+ * (requierePermiso('ventas.crear')) y la API no expone POST /permisos.
+ *
  * Se puede correr varias veces sin duplicar nada.
  *
  * Uso:  npm run seed
@@ -12,7 +21,7 @@ import { pool } from './config/db.js';
 const MODULOS = {
   usuarios: 'usuarios y roles',
   clientes: 'clientes',
-  vehiculos: 'vehiculos y catalogos',
+  vehiculos: 'vehículos y catálogos',
   distribuidores: 'distribuidores',
   proveedores: 'proveedores',
   repuestos: 'repuestos',
@@ -21,73 +30,33 @@ const MODULOS = {
 };
 const ACCIONES = ['ver', 'crear', 'editar', 'eliminar'];
 
-const ROLES = [
-  ['Administrador', 'Acceso total al sistema'],
-  ['Vendedor', 'Registra clientes y ventas de vehiculos'],
-  ['Mecanico', 'Gestiona mantenimientos y consumo de repuestos'],
-  ['Recepcionista', 'Atiende clientes, recibe vehiculos y consulta reportes'],
-];
-
-const PERMISOS_POR_ROL = {
-  Vendedor: [
-    'clientes.ver', 'clientes.crear', 'clientes.editar',
-    'vehiculos.ver', 'repuestos.ver', 'distribuidores.ver',
-    'ventas.ver', 'ventas.crear', 'ventas.editar', 'reportes.ver',
-  ],
-  Mecanico: [
-    'clientes.ver', 'vehiculos.ver', 'vehiculos.editar',
-    'repuestos.ver', 'repuestos.editar',
-    'mantenimientos.ver', 'mantenimientos.crear', 'mantenimientos.editar',
-  ],
-  Recepcionista: [
-    'clientes.ver', 'clientes.crear', 'clientes.editar',
-    'vehiculos.ver', 'ventas.ver',
-    'mantenimientos.ver', 'mantenimientos.crear', 'reportes.ver',
-  ],
-};
-
-const MARCAS = ['Toyota', 'Nissan', 'Hyundai', 'Kia', 'Mitsubishi', 'Suzuki', 'Honda', 'Ford', 'Chevrolet', 'Mazda'];
-const TIPOS = ['Sedan', 'SUV', 'Pick-up', 'Hatchback', 'Microbus', 'Camion', 'Motocicleta'];
-// El orden importa: el codigo busca estos nombres exactos al vender y al dar mantenimiento.
-const ESTADOS = ['Disponible', 'Reservado', 'Vendido', 'En mantenimiento', 'Fuera de servicio'];
-
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Empresa2026*';
 
-async function sembrar() {
-  await pool.query('INSERT IGNORE INTO roles (nombre, descripcion) VALUES ?', [ROLES]);
-
+async function inicializar() {
   const permisos = [];
   for (const [modulo, descripcion] of Object.entries(MODULOS)) {
     for (const accion of ACCIONES) {
       permisos.push([`${modulo}.${accion}`, modulo, accion, `${accion} ${descripcion}`]);
     }
   }
-  permisos.push(['reportes.ver', 'reportes', 'ver', 'Ver reportes y estadisticas']);
+  permisos.push(['reportes.ver', 'reportes', 'ver', 'Ver reportes y estadísticas']);
   permisos.push(['reportes.exportar', 'reportes', 'exportar', 'Exportar reportes']);
-  permisos.push(['bitacora.ver', 'bitacora', 'ver', 'Ver la bitacora de auditoria']);
+  permisos.push(['bitacora.ver', 'bitacora', 'ver', 'Ver la bitácora de auditoría']);
   await pool.query('INSERT IGNORE INTO permisos (clave, modulo, accion, descripcion) VALUES ?', [permisos]);
 
-  // El administrador recibe todos los permisos que existan.
+  await pool.query(
+    "INSERT IGNORE INTO roles (nombre, descripcion) VALUES ('Administrador', 'Acceso total al sistema')",
+  );
+
+  // El administrador siempre tiene todos los permisos, incluso los que se
+  // agreguen despues: por eso conviene volver a correr el seed tras actualizar.
   await pool.query(`
     INSERT IGNORE INTO rol_permiso (rol_id, permiso_id)
     SELECT r.id, p.id FROM roles r CROSS JOIN permisos p WHERE r.nombre = 'Administrador'`);
 
-  for (const [rol, claves] of Object.entries(PERMISOS_POR_ROL)) {
-    await pool.query(
-      `INSERT IGNORE INTO rol_permiso (rol_id, permiso_id)
-       SELECT r.id, p.id FROM roles r CROSS JOIN permisos p
-       WHERE r.nombre = ? AND p.clave IN (?)`,
-      [rol, claves],
-    );
-  }
-
-  await pool.query('INSERT IGNORE INTO marcas (nombre) VALUES ?', [MARCAS.map((nombre) => [nombre])]);
-  await pool.query('INSERT IGNORE INTO tipos_vehiculo (nombre) VALUES ?', [TIPOS.map((nombre) => [nombre])]);
-  await pool.query('INSERT IGNORE INTO estados_vehiculo (nombre) VALUES ?', [ESTADOS.map((nombre) => [nombre])]);
-
   const [[admin]] = await pool.query("SELECT id FROM usuarios WHERE usuario = 'admin'");
   if (admin) {
-    console.log('El usuario admin ya existe, no se toco su contrasena.');
+    console.log('El usuario admin ya existe, no se tocó su contraseña.');
   } else {
     const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
     await pool.query(
@@ -100,17 +69,17 @@ async function sembrar() {
   }
 
   const [[conteo]] = await pool.query(`
-    SELECT (SELECT COUNT(*) FROM roles) AS roles,
-           (SELECT COUNT(*) FROM permisos) AS permisos,
-           (SELECT COUNT(*) FROM rol_permiso) AS asignaciones,
-           (SELECT COUNT(*) FROM marcas) AS marcas`);
-  console.log('Datos base listos:', conteo);
+    SELECT (SELECT COUNT(*) FROM permisos) AS permisos,
+           (SELECT COUNT(*) FROM roles) AS roles,
+           (SELECT COUNT(*) FROM usuarios) AS usuarios`);
+  console.log('Sistema inicializado:', conteo);
+  console.log('Lo demás (roles, marcas, tipos y estados de vehículo) se registra desde el sistema.');
 }
 
 try {
-  await sembrar();
+  await inicializar();
 } catch (error) {
-  console.error('Fallo el seed:', error.message);
+  console.error('Falló la inicialización:', error.message);
   process.exitCode = 1;
 } finally {
   await pool.end();

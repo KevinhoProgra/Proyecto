@@ -8,7 +8,7 @@ export const usuarioController = {
   // Un usuario no se puede desactivar a si mismo: quedaria fuera del sistema.
   async eliminar(req, res) {
     if (Number(req.params.id) === req.usuario.id) {
-      throw new ErrorApi(400, 'No podes desactivar tu propio usuario');
+      throw new ErrorApi(400, 'No puedes desactivar tu propio usuario');
     }
     const borrado = await usuarioModel.eliminar(req.params.id);
     if (!borrado) throw new ErrorApi(404, 'Usuario no encontrado');

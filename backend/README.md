@@ -7,7 +7,7 @@ Backend REST en Node.js + Express 5 + MySQL, con autenticacion JWT y permisos po
 ```bash
 cd backend
 npm install
-npm run seed     # solo la primera vez: carga roles, permisos, catalogos y el usuario admin
+npm run seed     # crea los permisos, el rol Administrador y el usuario admin
 npm run dev
 ```
 
@@ -171,14 +171,34 @@ Todos piden `reportes.ver`. Ademas `/api/bitacora` (`bitacora.ver`) devuelve la 
 
 Los errores siempre vienen como `{ "mensaje": "..." }`.
 
-## Roles del seed
+## Datos iniciales
 
-| Rol | Puede |
+`npm run seed` NO carga datos de negocio. Solo crea:
+
+- **35 permisos**: son contrato del codigo (`requierePermiso('ventas.crear')`) y la API
+  no expone `POST /permisos`, asi que no se pueden crear desde el sistema.
+- **Rol Administrador** con todos los permisos.
+- **Usuario admin**.
+
+Todo lo demas —roles adicionales, marcas, tipos y estados de vehiculo, clientes,
+distribuidores, proveedores, repuestos— se registra desde el sistema.
+
+Correr el seed de nuevo despues de actualizar el codigo es util: le asigna al
+Administrador los permisos nuevos que se hayan agregado.
+
+### Estados de vehiculo con nombre exacto
+
+Al facturar y al recibir un vehiculo en el taller, el backend busca estos estados
+por nombre. Hay que registrarlos con la escritura exacta:
+
+| Nombre | Lo usa |
 |---|---|
-| Administrador | Todo |
-| Vendedor | Clientes, ventas, y consultar vehiculos y reportes |
-| Mecanico | Mantenimientos, repuestos, y consultar vehiculos y clientes |
-| Recepcionista | Clientes, recibir mantenimientos, consultar ventas y reportes |
+| `Disponible` | Al anular una venta y al entregar un mantenimiento |
+| `Vendido` | Al registrar una venta |
+| `En mantenimiento` | Al crear una orden de mantenimiento |
+
+Si falta alguno, la API responde 409 diciendo cual es. Los demas estados
+(`Reservado`, `Fuera de servicio`, o los que quieras) son libres.
 
 ## Pendientes conocidos
 
